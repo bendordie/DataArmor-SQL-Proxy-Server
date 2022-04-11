@@ -1,4 +1,4 @@
-# DataArmor-SQL-Proxy-Server
+# SQL-Proxy-Server
 TCP proxy-server for DBMS with the ability to log SQL requests
 
 ## Getting started
