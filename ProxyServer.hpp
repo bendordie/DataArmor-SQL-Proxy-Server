@@ -29,10 +29,7 @@ public:
 
     static ProxyServer*   init(EventSelector *eventSelector, int localPort, const string& forwardIp, int forwardPort);
     void                  removeSession(Session *session);
-    void                  addTcpBridgeToSelect(TcpBridge *bridge);
     void                  removeTcpBridge(TcpBridge *bridge);
-    const string&         getForwardIp() const;
-    int                   getForwardPort() const;
 
 private:
 
@@ -44,6 +41,7 @@ private:
     int                    forwardPort;
     EventSelector          *eventSelector;
     std::list<Session*>    sessions;
+    std::list<TcpBridge*>  tcpBridges;
 
 };
 

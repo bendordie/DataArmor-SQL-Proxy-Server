@@ -17,6 +17,9 @@
 #include "FdHandler.hpp"
 #include "TcpBridge.hpp"
 
+#define BUFFER_SIZE 4096
+#define MYSQL_PACKET_HEADER_LEN 4
+
 class ProxyServer;
 
 class Session : public FdHandler {
@@ -24,7 +27,7 @@ class Session : public FdHandler {
     friend class ProxyServer;
     friend class TcpBridge;
 
-    Session(ProxyServer *masterServer, int fd, const std::string &clientIp);
+    Session(ProxyServer *masterServer, int fd, const std::string &clientIp, TcpBridge *tcpBridge);
     ~Session();
     Session(const Session& other) = delete;
     Session& operator=(const Session& other) = delete;
@@ -36,27 +39,14 @@ public:
 private:
 
     std::string         clientIp;
-    char                *clientDataStorage;
-    size_t              sizeOfStoredData;
-    size_t              storageSize;
+    char                buffer[BUFFER_SIZE];
     ProxyServer         *masterServer;
     TcpBridge           *tcpBridge;
-    bool                dataIsFullReceived;
 
     void                handle(bool read, bool write) override;
-    bool                wantRead() const override;
     bool                wantWrite() const override;
     void                handleRequest();
     void                handleResponse();
-    bool                receiveDataFromClient(char *buffer, size_t &bytesRead);
-    bool                initTcpBridge();
-    void                storeDataFromClient(const char *buffer, size_t bytesRead);
-
-
-protected:
-
-//    void                writeToSyslog(int syslogLevel, const char *message) const;
-
 
 };
 

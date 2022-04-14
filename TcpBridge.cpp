@@ -1,7 +1,8 @@
 #include "TcpBridge.hpp"
 
 TcpBridge::TcpBridge(int forwardSocket)
-   : FdHandler(forwardSocket), dataSize(0), dataNeedsHandling(false), dataIsFullyReceived(false), errorOccurred(false) {
+   : FdHandler(forwardSocket), dataSize(0), dataNeedsHandling(false), errorOccurred(false),
+   dataToSent(nullptr), dataToSentSize(0) {
 
     bzero(dataBuffer, sizeof(dataBuffer));
 }
@@ -34,26 +35,33 @@ TcpBridge *TcpBridge::init(const string &forwardIp, int forwardPort) {
     return new TcpBridge(forwardSocket);
 }
 
-bool TcpBridge::sendMessage(const char *msg, size_t msgSize) const {
+void TcpBridge::sendMessage() {
 
-    ssize_t bytesSent;
+    long bytesSent;
 
-    bytesSent = send(getFd(), msg, msgSize, 0);
+    bytesSent = send(getFd(), dataToSent, dataToSentSize, 0);
     if (bytesSent < 0) {
         std::cerr << "Error: TcpBridge: " << strerror(errno) << std::endl;
-        return false;
+        errorOccurred = true;
     }
-
-    return true;
+    dataToSent = nullptr;
+    dataToSentSize = 0;
 }
+
+void TcpBridge::setDataToSent(const char *dataToSent) { this->dataToSent = dataToSent; }
+
+void TcpBridge::setDataToSentSize(size_t dataToSentSize) { this->dataToSentSize = dataToSentSize; }
 
 void TcpBridge::handle(bool read, bool write) {
 
-    (void)write;
+    if (write) {
+        sendMessage();
+        return;
+    }
     if (!read)
         return;
 
-    size_t bytesRead;
+    long bytesRead;
 
     bzero(dataBuffer, BUFFER_SIZE);
     bytesRead = recv(getFd(), dataBuffer, BUFFER_SIZE - 1, 0);
@@ -63,25 +71,22 @@ void TcpBridge::handle(bool read, bool write) {
         errorOccurred = true;
         return ;
     }
+    dataSize = bytesRead;
     dataNeedsHandling = true;
-    if (bytesRead > 0) {
-        dataSize = bytesRead;
-        std::cout << dataBuffer << std::endl;
-    }
-    if (bytesRead == 0) {
-        dataIsFullyReceived = true;
-        return ;
-    }
-    if (!dataIsFullyReceived)
-        return;
 }
 
 bool TcpBridge::wantRead() const {
-
     if (!dataNeedsHandling && !errorOccurred)
         return true;
-    else
-        return false;
+
+    return false;
+}
+
+bool TcpBridge::wantWrite() const {
+    if (dataToSent)
+        return true;
+
+    return false;
 }
 
 const char *TcpBridge::getData() const { return dataBuffer; }
@@ -91,7 +96,5 @@ size_t TcpBridge::getSizeOfData() const { return dataSize; }
 bool TcpBridge::isDataNeedsHandling() const { return dataNeedsHandling; }
 
 void TcpBridge::setDataIsHandled() { dataNeedsHandling = false; }
-
-bool TcpBridge::isDataFullyReceived() const { return dataIsFullyReceived; }
 
 bool TcpBridge::isErrorOccurred() const { return errorOccurred; }

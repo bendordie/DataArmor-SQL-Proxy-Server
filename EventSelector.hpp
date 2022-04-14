@@ -7,6 +7,7 @@
 #define __EVENT_SELECTOR_HPP__
 
 #include <iostream>
+#include <sys/poll.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>

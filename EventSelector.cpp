@@ -47,24 +47,24 @@ bool EventSelector::remove(FdHandler *handler) {
 
 void EventSelector::run() {
 
-    for (; !SHUT_DOWN; ) {
+    for (; !tcp_proxy::SHUT_DOWN; ) {
 
-        int     i;
-        fd_set  readSet, writeSet;
+        int             fd, fdIndexInSelector;
+        struct pollfd   selectedFds[1024];
 
-        FD_ZERO(&readSet);
-        FD_ZERO(&writeSet);
-        for (i = 0; i <= maxFd; ++i) {
-            if (fdStorage[i]) {
-                if (fdStorage[i]->wantRead()) {
-                    FD_SET(i, &readSet);
+        for (fd = 0, fdIndexInSelector = 0; fd <= maxFd; ++fd) {
+            if (fdStorage[fd]) {
+                selectedFds[fdIndexInSelector].fd = fd;
+                if (fdStorage[fd]->wantRead()) {
+                    selectedFds[fdIndexInSelector].events |= POLLIN;
                 }
-                if (fdStorage[i]->wantWrite()) {
-                    FD_SET(i, &writeSet);
+                if (fdStorage[fd]->wantWrite()) {
+                    selectedFds[fdIndexInSelector].events |= POLLOUT;
                 }
+                fdIndexInSelector++;
             }
         }
-        int result = select(maxFd + 1, &readSet, &writeSet, 0, 0);
+        int result = poll(selectedFds, fdIndexInSelector, -1);
         if (result < 0) {
             if (errno == EINTR)
                 continue;
@@ -72,14 +72,17 @@ void EventSelector::run() {
                 break;
         }
         if (result > 0) {
-            for (i = 0; i <= maxFd; ++i) {
-                if (!fdStorage[i])
+            for (fd = 0; fd < fdIndexInSelector; ++fd) {
+                if (!fdStorage[selectedFds[fd].fd])
                     continue;
-                bool read = FD_ISSET(i, &readSet);
-                bool write = FD_ISSET(i, &writeSet);
+
+                bool read = selectedFds[fd].revents & POLLIN;
+                bool write = selectedFds[fd].revents & POLLOUT;
                 if (read || write) {
-                    fdStorage[i]->handle(read, write);
+                    fdStorage[selectedFds[fd].fd]->handle(read, write);
                 }
+                selectedFds[fd].events = 0;
+                selectedFds[fd].revents = 0;
             }
         }
     }

@@ -11,13 +11,12 @@ ProxyServer::ProxyServer(EventSelector *eventSelector, int listenSocket, const s
 
 ProxyServer::~ProxyServer() {
 
-    for (const auto session : sessions) {
+    for (auto session : sessions) {
         eventSelector->remove(session);
     }
-
-//    for (auto it = sessions.begin(); it != sessions.end(); ++it) {
-//        eventSelector->remove((*it));
-//    }
+    for (auto tcpBridge : tcpBridges) {
+        eventSelector->remove(tcpBridge);
+    }
     eventSelector->remove(this);
 }
 
@@ -73,7 +72,13 @@ void ProxyServer::handle(bool read, bool write) {
 
     fcntl(clientSocket, F_SETFL, O_NONBLOCK);
 
-    Session  *session = new Session(this, clientSocket, clientIp);
+    auto   tcpBridge = TcpBridge::init(forwardIp, forwardPort);
+    if (!tcpBridge)
+        return;
+    tcpBridges.push_front(tcpBridge);
+    eventSelector->add(tcpBridge);
+
+    auto   *session = new Session(this, clientSocket, clientIp, tcpBridge);
     sessions.push_front(session);
     eventSelector->add(session);
 }
@@ -81,7 +86,6 @@ void ProxyServer::handle(bool read, bool write) {
 void ProxyServer::removeSession(Session *session) {
 
     eventSelector->remove(session);
-
     for (auto it = sessions.begin(); it != sessions.end(); ++it) { // TODO: error due to erasing
         if ((*it) == session) {
             sessions.erase(it);
@@ -93,14 +97,12 @@ void ProxyServer::removeSession(Session *session) {
 
 void ProxyServer::removeTcpBridge(TcpBridge *bridge) {
     eventSelector->remove(bridge);
-    delete bridge;
+    for (auto it = tcpBridges.begin(); it != tcpBridges.end(); ++it) { // TODO: error due to erasing
+        if ((*it) == bridge) {
+            tcpBridges.erase(it);
+            delete *it;
+            return;
+        }
+    }
 }
-
-void ProxyServer::addTcpBridgeToSelect(TcpBridge *bridge) {
-    eventSelector->add(bridge);
-}
-
-const string &ProxyServer::getForwardIp() const { return forwardIp; }
-
-int ProxyServer::getForwardPort() const { return forwardPort; }
 

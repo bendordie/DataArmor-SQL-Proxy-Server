@@ -1,16 +1,14 @@
-#include <unistd.h>
-#include <signal.h>
 #include "tcp_proxy.hpp"
 #include "ProxyServer.hpp"
 
-bool SHUT_DOWN = false;
+bool tcp_proxy::SHUT_DOWN = false;
 
-void signalHandler(int status) {
+void tcp_proxy::signalHandler(int status) {
 
     if (WIFSIGNALED(status))
     {
         if (status == SIGTERM || status == SIGHUP) {
-            SHUT_DOWN = true;
+            tcp_proxy::SHUT_DOWN = true;
             std::cout << "Terminated. Exit..." << std::endl;
         }
     }
@@ -18,20 +16,10 @@ void signalHandler(int status) {
         exit(WEXITSTATUS(status));
 }
 
-std::string tcp_proxy::getCurrentTimeAndDateString()
-{
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-    return ss.str();
-}
-
 void tcp_proxy::writeToSyslog(const Session *session, const char *message) {
 
     std::ofstream     logFile("tcp_proxy.log", std::ios_base::app);
-    const std::string &timestamp = getCurrentTimeAndDateString();
+    const std::string &timestamp = utils::getCurrentTimeAndDateString();
 
     if (!logFile.is_open()) {
         std::cerr << "Warning: Can't open or create log file" << std::endl;
@@ -70,8 +58,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error: Can't initialize server: " << strerror(errno) << std::endl;
         exit(1);
     }
-    signal(SIGTERM, signalHandler);
-    signal(SIGHUP, signalHandler);
+    signal(SIGTERM, tcp_proxy::signalHandler);
+    signal(SIGHUP, tcp_proxy::signalHandler);
 
     std::cout << "Ready for connections" << std::endl;
     eventSelector->run();

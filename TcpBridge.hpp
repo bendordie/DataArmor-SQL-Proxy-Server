@@ -3,6 +3,8 @@
 
 #include <string>
 #include <iostream>
+#include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -24,22 +26,25 @@ public:
 
     void                handle(bool read, bool write) override;
     bool                wantRead() const override;
-    bool                sendMessage(const char *msg, size_t msgSize) const;
+    bool                wantWrite() const override;
+    void                sendMessage();
     const char*         getData() const;
     size_t              getSizeOfData() const;
     bool                isDataNeedsHandling() const;
-    bool                isDataFullyReceived() const;
     bool                isErrorOccurred() const;
 
     void                setDataIsHandled();
+    void                setDataToSent(const char *dataToSent);
+    void                setDataToSentSize(size_t dataToSentSize);
 
 private:
 
-    char      dataBuffer[BUFFER_SIZE];
-    size_t    dataSize;
-    bool      dataNeedsHandling;
-    bool      dataIsFullyReceived;
-    bool      errorOccurred;
+    char         dataBuffer[BUFFER_SIZE];
+    long         dataSize;
+    bool         dataNeedsHandling;
+    bool         errorOccurred;
+    const char   *dataToSent;
+    long         dataToSentSize;
 
 };
 

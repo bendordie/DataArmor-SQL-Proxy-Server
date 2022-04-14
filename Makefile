@@ -6,7 +6,8 @@ SRC =	tcp_proxy.cpp \
 				FdHandler.cpp \
 				EventSelector.cpp \
 				Session.cpp \
-				TcpBridge.cpp
+				TcpBridge.cpp \
+				utilities.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
